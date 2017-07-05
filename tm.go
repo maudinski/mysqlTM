@@ -154,7 +154,7 @@ func (tm *TableManager) CheckExists(uniqueValue string) (bool, error) {
 		return true, errors.New("tm.SetupVerify not called")	
 	}
 	fullQ := tm.existsQ + uniqueValue 
-	rows, err := tm.db.Exec(fullQ)
+	rows, err := tm.db.Query(fullQ)
 	defer rows.Close()
 	if err != nil {
 		return true, err	
