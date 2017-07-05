@@ -20,6 +20,8 @@ type TableManager struct {
 	//"insert into (table)(field, field...)". The "values( ... )" part is added
 	//dyanamically right before execution. used in tm.Insert()
 	insertQ string
+	//used in CheckExists, to check if that aunique already exist
+	existsQ string
 	//holds the amount of fields entered with the constructor (the ...string). Used
 	//to verify that enough fields where entered when tm.Insert() is called.
 	fieldAmt int
@@ -74,6 +76,7 @@ func (tm *TableManager) SetupVerify(uniqueFieldName string,
 	//TODO check that they exist in tm.fields
 	tm.unique = uniqueFieldName
 	tm.verifier = verifierFieldName
+	tm.existsQ = "select * from "+tm.tableName+"where "+uniqueFieldName+" = "
 	return nil
 }
 
@@ -144,8 +147,21 @@ func UpdateEntry(field string, newValue string) error {
 	return nil
 }
 
-//not written
-func (tm *TableManager) CheckExists(uniqueField string, uniqueValue string) (bool, error) {
+//Checks if the enetered uniqueValue already exists in the table. Checks the field set
+//up with tm.SetupVerify(), so that must be called
+func (tm *TableManager) CheckExists(uniqueValue string) (bool, error) {
+	if tm.existsQ == "" {
+		return true, errors.New("tm.SetupVerify not called")	
+	}
+	fullQ := tm.existsQ + uniqueValue 
+	rows, err := tm.db.Exec(fullQ)
+	defer rows.Close()
+	if err != nil {
+		return true, err	
+	}
+	if rows.Next(){
+		return true, nil	
+	}
 	return false, nil
 }
 
