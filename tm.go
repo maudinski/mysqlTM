@@ -1,5 +1,6 @@
 package mysqlTM
-
+//TODO theres probably a way to just have the table and have mysql return the fields and
+//shit, would make this shit SO much cleaner
 //Package for maintaing a table in mysql. Geared towards account management. Not complete
 //but whats here works
 import (
@@ -76,7 +77,7 @@ func (tm *TableManager) SetupVerify(uniqueFieldName string,
 	//TODO check that they exist in tm.fields
 	tm.unique = uniqueFieldName
 	tm.verifier = verifierFieldName
-	tm.existsQ = "select * from "+tm.tableName+"where "+uniqueFieldName+" = "
+	tm.existsQ = "select * from "+tm.tableName+" where "+uniqueFieldName+" = "
 	return nil
 }
 
@@ -150,12 +151,15 @@ func UpdateEntry(field string, newValue string) error {
 //Checks if the enetered uniqueValue already exists in the table. Checks the field set
 //up with tm.SetupVerify(), so that must be called
 func (tm *TableManager) CheckExists(uniqueValue string) (bool, error) {
+	
 	if tm.existsQ == "" {
 		return true, errors.New("tm.SetupVerify not called")	
 	}
-	fullQ := tm.existsQ + uniqueValue 
+
+	fullQ := tm.existsQ + "'" + uniqueValue + "'"
+	fmt.Println(fullQ) 
 	rows, err := tm.db.Query(fullQ)
-	defer rows.Close()
+	
 	if err != nil {
 		return true, err	
 	}
