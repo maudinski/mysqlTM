@@ -1,5 +1,5 @@
-package mysqlTM
-
+package main
+//TODO TODO BUG BUG BUG TODO mysqlTM
 import (
 	"database/sql"
 	"errors"
