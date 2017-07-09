@@ -1,5 +1,3 @@
 # mysqlTM
-This is a package for abstractly managing insertions/deletions/verifications on mysql tables for Go.
-Incomplete rn but what's here works
 
-Probably not as much functionality as you'd like lol
+package for abstract mysql table managing in Go
