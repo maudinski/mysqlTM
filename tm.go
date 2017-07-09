@@ -4,14 +4,10 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	//"net/http"
+	"net/http"
 	//crypto
 	_ "github.com/go-sql-driver/mysql"
 )
-
-//TODO custom error types, so you can do outside package something like
-//if err == mysqlTM.VerifyNotSet
-//for if they dont do verify or someshit
 
 type field struct {
 	field string
@@ -19,25 +15,41 @@ type field struct {
 	null string
 	key string
 	//in wherever this is used, deafult is tried to be assigned the value <nil>, but
-	//strings cant be nil. macheteed
+	//strings cant be nil
 	ddefault interface{}
 	extra string
 }
 
 type TableManager struct {
+	//pointer to the db
 	db *sql.DB
+	//used in Verify() to verify a unique value to a verifier (ie username to password)
 	verifyQ string
+	//used in Insert()
 	insertQ string
+	//used in Delete()
 	deleteQ string
+	//used in DeleteByUnique()
 	deleteUniqueQ string 
+	//used in CheckExistsUnique()
 	uniqueExistsQ string
+	//used in UpdateByUnique()
 	updateByUniqueQ string
+	//used in GetByUnique()
 	getByUniqueQ string
+	//amount of fields in the swl tables. set after getFields() is called
 	fieldAmt int
+	//table name
 	table string
+	//the name of the unique field name (ie username, email, etc). Set when 
+	//SetUnique() is called
 	unique string
+	//Also set when SetUnique() is caleed. VErifier name (ie password, maybe a phone #)
 	verifier string
+	//list of fields in the tables, in order as they appear in mysql
 	fields []field
+	//set when setUnique() is called. Used to error check for functions that
+	//speciffically use the unique value
 	uniqueSet bool
 }
 
@@ -93,15 +105,17 @@ func (tm *TableManager) Verify(unique string, verifier string) (bool, error) {
 	err := tm.db.QueryRow(tm.verifyQ, unique).Scan(&recievedVerifier)
 	return recievedVerifier == verifier, err
 }
-/*
+
+//takes a pointer to an http.Request, parses the form, and inserts it into the table. the
+//names of the <input> tags in html form must be the same as they appear in mysql, 
+//otherwise they will be set as the empty string
 func (tm *TableManager) InsertR(r *http.Request) error {
-	values, err := getValuesFromForm(r)
+	values, err := tm.getValuesFromForm(r)
 	if err != nil {
 		return err	
 	}
 	return tm.Insert(values...)
 }
-*/
 
 //Takes the field values in the order that they appear in the mysql table. Does not check
 //if the unique value already exists. tm.AlreadyExists should be called before this 
@@ -115,32 +129,44 @@ func (tm *TableManager) Insert(fieldValuesInOrder ...interface{}) error {
 	return err
 }
 
-/*
-//Testing this shit af
-func (tm *TableManager) InsertPartial(fieldsAndValues ...string) {
-	//This block of code is getting the proper query string... TODO i need to find a more
-	//efficient way of doing this... this, along with GetAll, is just fucked
+//Insert partial entries with the spcified values. Does not check that you are trying to
+//enter the unique value(incase it isnt set). Should be called like this:
+//tm.InsertPartial(fieldname, value, anotherFieldName, value) etc, for any number of fields
+//and value pairs
+func (tm *TableManager) InsertPartial(fieldsAndValues ...interface{}) error {
+	//function is a mess but it works
 	l := len(fieldsAndValues)
 	if l % 2 != 0 || l == 0{
-		return nil,errors.New("should be GetAll(field1, value1, field2, value2). read doc")
+		return errors.New("should be GetAll(field1, value1, field2, value2). read doc")
 	}
-	q := "insert into "+tm.table
-	fieldsPartialQ := "(" + fieldsAndValues[i]
-	valuesPartialQ := "values(?"
+
+	str, ok := fieldsAndValues[0].(string)
+	if !ok {
+		return errors.New("should be GetAll(fieldName1, value1, fieldName2, value2) field"+
+											"names are string")	
+	}
+	q := "insert into "+tm.table+"("+str
+	questionsQ := "values(?"
 	values := make([]interface{}, l/2)
 	values[0] = fieldsAndValues[1]
-	for i := 2; i < l; i += 2 { 
-		fieldsPartialQ += "," +fieldsAndValues[i]
-		valuesPartialQ += ", ?"
-		values[i/2] = fieldsAndValues[i]
+	
+	for i := 2; i < l; i += 2 {
+		str, ok = fieldsAndValues[i].(string)
+		if !ok {
+			return errors.New("should be GetAll(fieldName1, value1, fieldName2, value2)"+ 
+					"field names are strins")
+		}
+		q += ", " +str
+		questionsQ += ", ?"
+		values[i/2] = fieldsAndValues[i+1]
 	}
-	q += fieldsPartialQ + ") "+ valuesPartialQ +"?;"
-	
-	
-	_, err := tm.db.Exec(q, values)
+
+	q += ") "+ questionsQ +");"
+	fmt.Println(q)
+	fmt.Println(values)
+	_, err := tm.db.Exec(q, values...)
 	return err
 }
-*/
 
 //Gets all fields of an entry with that unique value. Returns them as a slice of
 //interface{}, in order as they are in mysql table, otherwise an error if something went
@@ -196,16 +222,14 @@ func (tm *TableManager) CheckUniqueExists(value interface{}) (bool, error) {
 	return rows.Next(), rows.Err() 
 }
 
-/*
-
+///////////////////////////
 func (tm *TableManager) DeleteR(r *http.Request) error {
-	values, err := getValuesFromForm(r)
+	values, err := tm.getValuesFromForm(r)
 	if err != nil {
 		return err	
 	}
 	return tm.Delete(values...)
 }
-*/
 
 //Takes the values of the fields, in order as they appear in mysql table. All fields must
 //match for it to be deleted. Returns an err if something went wrong
@@ -227,7 +251,6 @@ func (tm *TableManager) DeleteByUnique(value interface{}) error {
 	return err	
 }
 
-/*
 //this will set the values to whatever is in the form from the request. They name of 
 //the <input> in html MUST be the same as the name of the field in mysql. If not, this
 //wont retrieve that from the form, and will set the value in the mysql field to an empty 
@@ -240,13 +263,12 @@ func (tm *TableManager) getValuesFromForm(r *http.Request) ([]interface{}, error
 	//it will return a "6" instead of 6. fix later if necessary (which it might be) TODO
 	//use field.type to know when to convert to number. This will hinder the ability for
 	//things to not have to be all string types
-	for i, field := tm.fields {
+	for i, field := range tm.fields {
 		val := r.Form.Get(field.field)
 		values[i] = val
 	}
 	return values, nil
 }
-*/
 
 //update the field of the unique value passed to the newVal. Need to call uniqueSet at 
 //some point before
@@ -259,53 +281,6 @@ func (tm *TableManager)UpdateByUnique(unique interface{}, field string,
 	_, err := tm.db.Exec(q, newVal, unique)
 	return err
 }
-
-/*
-//this got fucked by some copy and paste
-//TODO do GetAll(max int, fieldsAndValues ...string) that will get a maximum number
-func (tm *TableManager) GetAll(fieldsAndValues ...string)([][]string, error) {
-	// this get query section is pretty bad, but it seems to work. I knows its a
-	//fucking mess, but all it does is get the query to be ran in the form of
-	//"select * from table where field = value and field2 = value2 and field3 = ..."
-	//dynamically, based on how many field and value pairs were entered
-	l := len(fieldsAndValues)
-	if l % 2 != 0 {
-		return nil,errors.New("should be GetAll(field1, value1, field2, value2). read doc")
-	}
-	q := "select * from "+tm.table
-	//this allows for function to be passed nothing, which means get everything from table
-	if l != 0 {
-		q += " where "+fieldsAndValues[0]+" = '" + fieldsAndValues[1]+"' "
-	}
-	for i := 2; i < l; i += 2 { //TODO that '%v' is hardcoded for strings
-		q += "and " + fmt.Sprintf("%v = '%v'", fieldsAndValues[i], fieldsAndValues[i+1])
-	}
-	
-	rows, err := tm.db.Query(q)
-	if err != nil {
-		return nil, err	
-	}
-	//unfortunately, no way to do this without append, since theres no way to tell how
-	//many rows are returned. TODO sucks that i have to allocate so much fucking memory.
-	//see what brad fitzpatricks comment in .Next() or .Scan() was about non-allocated, 
-	//read only memory or someshit
-	//see if theres a way to know ahead of time how many entries in rows
-	entries := make([][]string, 0) 
-	for rows.Next() {
-		entry := make([]string, tm.fieldAmt)
-		err = rows.Scan(entry...)
-		if err != nil {
-			return nil, err	
-		}
-		entries := append(entries, entry)
-	}
-	if err = rows.Err(); err != nil {
-		return nil, err	
-	}
-	return entries, nil
-}
-
-*/
 
 //These are just "not enough behavior in this package" functions
 func (tm *TableManager) Query(query string, args ...interface{}) (*sql.Rows, error) {
@@ -337,7 +312,6 @@ func (tm *TableManager) getFields() error {
 		if err != nil{
 			return errors.New("Error during scanning :" + err.Error())	
 		}
-		//fmt.Println("getFields():", f.ttype)
 		fields = append(fields, f)
 	}
 	tm.fields = fields
