@@ -14,7 +14,7 @@ type field struct {
 	ttype string
 	null string
 	key string
-	//in wherever this is used, deafult is tried to be assigned the value <nil>, but
+	//in wherever this is used, deafult is tried to be ___igned the value <nil>, but
 	//strings cant be nil
 	ddefault interface{}
 	extra string
@@ -23,7 +23,7 @@ type field struct {
 type TableManager struct {
 	//pointer to the db
 	db *sql.DB
-	//used in Verify() to verify a unique value to a verifier (ie username to password)
+	//used in Verify() to verify a unique value to a verifier (ie username to p___word)
 	verifyQ string
 	//used in Insert()
 	insertQ string
@@ -44,7 +44,7 @@ type TableManager struct {
 	//the name of the unique field name (ie username, email, etc). Set when 
 	//SetUnique() is called
 	unique string
-	//Also set when SetUnique() is caleed. VErifier name (ie password, maybe a phone #)
+	//Also set when SetUnique() is caleed. VErifier name (ie p___word, maybe a phone #)
 	verifier string
 	//list of fields in the tables, in order as they appear in mysql
 	fields []field
@@ -77,7 +77,7 @@ func NewTM(dbUserName string, dbPass string, host string, db string,
 	return tm, nil
 }
 
-//sets the unique field and the verifier field(ie: username and password, respectively). 
+//sets the unique field and the verifier field(ie: username and p___word, respectively). 
 //also runs some set up for future use
 //sets for the duration of executaion
 func (tm *TableManager) SetUnique(uniqueField string, verifierField string) error {
@@ -181,7 +181,7 @@ func (tm *TableManager) GetByUnique(unique interface{})([]interface{}, error) {
 	//first to makes and the forloop. Also, Scan is returning a slice of bytes for each val
 	//. since that isnt useful, and you cant just type cast something of type interface{},
 	//we loop over the fields and do a switch of the field.ttype, and depending on what 
-	//that is, do an appropriate type assertion (which i think (i could be wrong) is what 
+	//that is, do an appropriate type ___ertion (which i think (i could be wrong) is what 
 	//that .([]byte)) is. link should be a little bit of guidance. Not much tho. Also think
 	//of a better way to do this. but for now, TODO add in the other types to the swith
 	//that sql has so this returns the appropriate things
@@ -270,7 +270,7 @@ func (tm *TableManager) getValuesFromForm(r *http.Request) ([]interface{}, error
 	return values, nil
 }
 
-//update the field of the unique value passed to the newVal. Need to call uniqueSet at 
+//update the field of the unique value p___ed to the newVal. Need to call uniqueSet at 
 //some point before
 func (tm *TableManager)UpdateByUnique(unique interface{}, field string, 
 															newVal interface{}) error{
@@ -325,7 +325,7 @@ func (tm *TableManager) setUniqueExistsQ() {
 
 //sets the queur for the Insert function, since it will always be the same. form of
 //"insert into table(field, field) values(?, ?)". question marks because sql.Exec will 
-//handle that if you pass it the parameters as well. convenient
+//handle that if you p___ it the parameters as well. convenient
 //doesnt work out if the table has 0 rows. called after getFields()
 func (tm *TableManager) setInsertQ() {
 	q := "insert into "+tm.table+"("+tm.fields[0].field
@@ -339,7 +339,7 @@ func (tm *TableManager) setInsertQ() {
 
 //sets the query string for delete as "Delete from table where field = ? and field = ?"
 //dynamic, called after getFields(). ? again becasue sql.Exec takes care of concatenating
-//if you pass parameters
+//if you p___ parameters
 func (tm *TableManager) setDeleteQ() {
 	q := "delete from "+tm.table+" where "+tm.fields[0].field+" = ?"
 	for i := 1; i < tm.fieldAmt; i++ {
